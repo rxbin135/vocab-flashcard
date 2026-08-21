@@ -230,6 +230,10 @@
   </div>
   <div class="group">
     <button class="btn" id="btn-shuffle">🔀 섞기</button>
+    <button class="btn" id="btn-export-unknown">📄 모름 CSV</button>
+    <button class="btn" id="btn-backup">💾 전체 백업</button>
+    <button class="btn" id="btn-restore">📥 백업 복원</button>
+    <input id="backup-file" type="file" accept="application/json,.json" hidden>
     <button class="btn danger" id="btn-reset">🗑️ 초기화</button>
   </div>
 </div>
@@ -289,6 +293,120 @@ function saveState() {
     filter: state.filter,
     source: state.source,
   }));
+}
+
+function datedFilename(prefix, extension) {
+  const localDate = new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
+    .toISOString().slice(0, 10);
+  return `${prefix}_${localDate}.${extension}`;
+}
+
+function downloadFile(filename, contents, type) {
+  const blob = new Blob([contents], { type });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function exportBackup() {
+  const backup = {
+    format: "vocab-flashcard-backup",
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    storageKey: STORAGE_KEY,
+    cardCount: CARDS.length,
+    state: {
+      progress: state.progress,
+      filter: state.filter,
+      source: state.source,
+    },
+  };
+  downloadFile(
+    datedFilename("vocab_flashcard_backup", "json"),
+    JSON.stringify(backup, null, 2),
+    "application/json;charset=utf-8"
+  );
+}
+
+function htmlToPlainText(value) {
+  const element = document.createElement("div");
+  element.innerHTML = String(value ?? "").replace(/<br\s*\/?>/gi, "\n");
+  return element.textContent || "";
+}
+
+function csvCell(value) {
+  return `"${String(value ?? "").replace(/"/g, '""')}"`;
+}
+
+function exportUnknownCsv() {
+  const rows = [["카드번호", "앞면", "뒷면", "출처", "분류", "메모", "상태"]];
+  Object.entries(state.progress).forEach(([indexText, status]) => {
+    if (status !== "unknown") return;
+    const index = Number(indexText);
+    const card = CARDS[index];
+    if (!card) return;
+    rows.push([
+      index + 1,
+      htmlToPlainText(card.t),
+      htmlToPlainText(card.d),
+      card.s || "",
+      card.c || "",
+      card.p || "",
+      "모름",
+    ]);
+  });
+  const csv = "\uFEFF" + rows.map(row => row.map(csvCell).join(",")).join("\r\n");
+  downloadFile(
+    datedFilename("vocab_flashcard_unknown", "csv"),
+    csv,
+    "text/csv;charset=utf-8"
+  );
+}
+
+async function restoreBackup(file) {
+  let parsed;
+  try {
+    parsed = JSON.parse(await file.text());
+  } catch (error) {
+    alert("올바른 JSON 백업 파일이 아닙니다.");
+    return;
+  }
+
+  if (parsed.format !== "vocab-flashcard-backup" || parsed.storageKey !== STORAGE_KEY ||
+      parsed.version !== 1 || !parsed.state || !parsed.state.progress ||
+      typeof parsed.state.progress !== "object" || Array.isArray(parsed.state.progress)) {
+    alert("이 단어장에서 만든 호환 가능한 백업 파일이 아닙니다.");
+    return;
+  }
+
+  const restoredProgress = {};
+  Object.entries(parsed.state.progress).forEach(([indexText, status]) => {
+    const index = Number(indexText);
+    if (Number.isInteger(index) && index >= 0 && index < CARDS.length &&
+        (status === "known" || status === "unknown")) {
+      restoredProgress[index] = status;
+    }
+  });
+
+  const reviewedCount = Object.keys(restoredProgress).length;
+  if (!confirm(`현재 학습 기록을 백업의 기록 ${reviewedCount.toLocaleString()}개로 바꿀까요?`)) return;
+
+  state.progress = restoredProgress;
+  state.filter = ["unseen", "all", "unknown", "known"].includes(parsed.state.filter)
+    ? parsed.state.filter : "unseen";
+  state.source = ["all", "Anki", "Quizlet"].includes(parsed.state.source)
+    ? parsed.state.source : "all";
+  saveState();
+  updateFilterButtons();
+  buildQueue();
+  showCard();
+  updateStats();
+  alert(`학습 기록 ${reviewedCount.toLocaleString()}개를 복원했습니다.`);
 }
 
 function getCardStatus(idx) {
@@ -461,6 +579,16 @@ document.getElementById("btn-unknown").addEventListener("click", () => mark("unk
 document.getElementById("btn-next").addEventListener("click", next);
 document.getElementById("btn-prev").addEventListener("click", prev);
 document.getElementById("btn-shuffle").addEventListener("click", reshuffle);
+document.getElementById("btn-export-unknown").addEventListener("click", exportUnknownCsv);
+document.getElementById("btn-backup").addEventListener("click", exportBackup);
+document.getElementById("btn-restore").addEventListener("click", () => {
+  document.getElementById("backup-file").click();
+});
+document.getElementById("backup-file").addEventListener("change", async (event) => {
+  const file = event.target.files[0];
+  event.target.value = "";
+  if (file) await restoreBackup(file);
+});
 document.getElementById("btn-reset").addEventListener("click", reset);
 
 document.addEventListener("keydown", (e) => {
