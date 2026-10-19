@@ -1,0 +1,9 @@
+{
+  "name": "단어장 플래시카드",
+  "short_name": "단어장",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a"
+}

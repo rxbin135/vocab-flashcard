@@ -3,6 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <title>단어장 플래시카드</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="단어장">
+<meta name="theme-color" content="#0f172a">
 <style>
   :root {
     --bg: #0f172a;
@@ -606,6 +610,10 @@ updateFilterButtons();
 buildQueue();
 showCard();
 updateStats();
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+}
 </script>
 </body>
 </html>
