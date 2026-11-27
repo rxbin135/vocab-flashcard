@@ -203,6 +203,36 @@
     background: var(--accent);
     transition: width 0.3s;
   }
+
+  /* 전치사 빈칸 모드 */
+  .btn.mode-toggle { border: 1px dashed #475569; color: var(--text-dim); }
+  .btn.mode-toggle:hover { border-color: var(--accent); color: var(--text); }
+  .btn.mode-toggle.active {
+    border: 1px solid var(--accent);
+    color: #0f172a;
+    font-weight: 600;
+  }
+  .blank-phrase { line-height: 1.5; }
+  .blank-phrase .prep-blank {
+    color: var(--accent);
+    font-weight: 700;
+    letter-spacing: 2px;
+  }
+  .prep-answer {
+    display: block;
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.5px;
+  }
+  .prep-original {
+    display: block;
+    margin-top: 14px;
+    font-size: 16px;
+    font-weight: 400;
+    color: var(--text-dim);
+    line-height: 1.5;
+  }
 </style>
 </head>
 <body>
@@ -227,6 +257,10 @@
     <button class="btn" data-filter="known">잘앎만</button>
   </div>
   <div class="group">
+    <label>연습</label>
+    <button class="btn mode-toggle" id="btn-blank" aria-pressed="false">🧩 전치사 빈칸</button>
+  </div>
+  <div class="group">
     <label>출처</label>
     <button class="btn" data-source="all">전체</button>
     <button class="btn" data-source="Anki">Anki</button>
@@ -245,6 +279,7 @@
 <div class="card-wrap">
   <div class="card" id="card">
     <div class="term" id="term">로딩 중...</div>
+    <div class="def hidden" id="blank-def"></div>
     <div class="def hidden" id="def"></div>
     <div class="tip" id="tip"></div>
     <div class="meta" id="meta"></div>
@@ -275,6 +310,7 @@ let state = {
   queue: [],
   pos: 0,
   flipped: false,
+  blank: false,
 };
 
 const DEFAULT_PROGRESS = {"22":"unknown","23":"unknown","24":"unknown","34":"unknown","59":"unknown","97":"unknown","133":"unknown","160":"unknown","195":"unknown","209":"unknown","228":"unknown","240":"unknown","279":"unknown","292":"unknown","300":"unknown","305":"unknown","307":"unknown","326":"unknown","330":"unknown","340":"unknown","345":"unknown","353":"unknown","376":"unknown","388":"unknown","396":"unknown","428":"unknown","452":"unknown","495":"unknown","510":"unknown","517":"unknown","518":"unknown","519":"unknown","524":"unknown","527":"unknown","540":"unknown","544":"unknown","546":"unknown","554":"unknown","568":"unknown","591":"unknown","621":"unknown","654":"unknown","664":"unknown","696":"unknown","700":"unknown","721":"unknown","730":"unknown","733":"unknown","791":"unknown","792":"unknown","793":"unknown","828":"unknown","831":"unknown","839":"unknown","845":"unknown","849":"unknown","850":"unknown","877":"unknown","893":"unknown","911":"unknown","916":"unknown","922":"unknown","932":"unknown","952":"unknown","954":"unknown","960":"unknown","968":"unknown","990":"unknown","1001":"unknown","1003":"unknown","1010":"unknown","1020":"unknown","1025":"unknown","1037":"unknown","1045":"unknown","1049":"unknown","1060":"unknown","1088":"unknown","1091":"unknown","1092":"unknown","1105":"unknown","1113":"unknown","1127":"unknown","1131":"unknown","1132":"unknown","1139":"unknown","1145":"unknown","1147":"unknown","1149":"unknown","1154":"unknown","1156":"unknown","1159":"unknown","1162":"unknown","1175":"unknown","1180":"unknown","1184":"unknown","1192":"unknown","1224":"unknown","1225":"unknown","1234":"unknown","1236":"unknown","1250":"unknown","1253":"unknown","1267":"unknown","1272":"unknown","1273":"unknown","1291":"unknown","1311":"unknown","1330":"unknown","1332":"unknown","1338":"unknown","1355":"unknown","1380":"unknown","1403":"unknown","1413":"unknown","1424":"unknown","1453":"unknown","1456":"unknown","1473":"unknown","1474":"unknown","1476":"unknown","1486":"unknown","1510":"unknown","1531":"unknown","1532":"unknown","1557":"unknown","1560":"unknown","1563":"unknown","1566":"unknown","1602":"unknown","1611":"unknown","1614":"unknown","1620":"unknown","1644":"unknown","1654":"unknown","1661":"unknown","1662":"unknown","1700":"unknown","1718":"unknown","1729":"unknown","1746":"unknown","1749":"unknown","1750":"unknown","1755":"unknown","1771":"unknown","1782":"unknown","1791":"unknown","1794":"unknown","1796":"unknown","1802":"unknown","1835":"unknown","1847":"unknown","1851":"unknown","1864":"unknown","1870":"unknown","1897":"unknown","1909":"unknown","1916":"unknown","1923":"unknown","1966":"unknown","1967":"unknown","1969":"unknown","1978":"unknown","2009":"unknown","2050":"unknown","2060":"unknown","2067":"unknown","2099":"unknown","2109":"unknown","2202":"unknown","2215":"unknown","2224":"unknown","2227":"unknown","2248":"unknown","2253":"unknown","2264":"unknown","2265":"unknown","2283":"unknown","2288":"unknown","2295":"unknown","2343":"unknown","2345":"unknown","2371":"unknown","2384":"unknown","2401":"unknown","2406":"unknown","2430":"unknown","2449":"unknown","2450":"unknown","2457":"unknown","2463":"unknown","2477":"unknown","2482":"unknown","2483":"unknown","2486":"unknown","2487":"unknown","2489":"unknown","2495":"unknown","2504":"unknown","2517":"unknown","2526":"unknown","2537":"unknown","2545":"unknown","2564":"unknown","2567":"unknown","2584":"unknown","2636":"unknown","2639":"unknown","2688":"unknown","2706":"unknown","2710":"unknown","2728":"unknown","2731":"unknown","2763":"unknown","2792":"unknown","2797":"unknown","2798":"unknown","2821":"unknown","2844":"unknown","2853":"unknown","2855":"unknown","2865":"unknown","2866":"unknown","2887":"unknown","2893":"unknown","2897":"unknown","2911":"unknown","2912":"unknown","2916":"unknown","2933":"unknown","2944":"unknown","2946":"unknown","2963":"unknown","2965":"unknown","2994":"unknown","3003":"unknown","3019":"unknown","3043":"unknown","3061":"unknown","3086":"unknown","3087":"unknown","3132":"unknown","3149":"unknown","3186":"unknown","3188":"unknown","3197":"unknown","3208":"unknown","3242":"unknown","3271":"unknown","3320":"unknown","3323":"unknown","3335":"unknown","3355":"unknown","3356":"unknown","3363":"unknown","3382":"unknown","3394":"unknown","3473":"unknown","3474":"unknown","3508":"unknown","3509":"unknown","3518":"unknown","3546":"unknown","3560":"unknown","3571":"unknown","3572":"unknown","3586":"unknown","3588":"unknown","3597":"unknown","3641":"unknown","3679":"unknown","3682":"unknown","3718":"unknown","3742":"unknown","3759":"unknown","3809":"unknown","3855":"unknown","3872":"unknown","3875":"unknown","3891":"unknown","3925":"unknown","3932":"unknown","3950":"unknown","3955":"unknown","3965":"unknown","3975":"unknown","3997":"unknown","4009":"unknown","4017":"unknown","4053":"unknown","4057":"unknown","4066":"unknown","4104":"unknown","4168":"unknown","4212":"unknown","4221":"unknown","4231":"unknown","4232":"unknown","4241":"unknown","4248":"unknown","4251":"unknown","4252":"unknown","4260":"unknown","4267":"unknown","4313":"unknown","4337":"unknown","4345":"unknown","4351":"unknown","4365":"unknown","4376":"unknown","4428":"unknown","4445":"unknown","4505":"unknown","4624":"unknown","4630":"unknown","4644":"unknown","4702":"unknown","4727":"unknown","4729":"unknown","4745":"unknown","4756":"unknown","4762":"unknown","4780":"unknown","4804":"unknown","4819":"unknown","4847":"unknown","4857":"unknown","4859":"unknown","4900":"unknown","4905":"unknown","4912":"unknown","4941":"unknown","4970":"unknown","5033":"unknown","5045":"unknown","5050":"unknown","5066":"unknown","5068":"unknown","5079":"unknown","5102":"unknown","5109":"unknown","5135":"unknown","5155":"unknown","5160":"unknown","5180":"unknown","5186":"unknown","5232":"unknown","5245":"unknown","5302":"unknown","5303":"unknown","5306":"unknown","5349":"unknown","5359":"unknown","5362":"unknown","5370":"unknown","5383":"unknown","5386":"unknown","5395":"unknown","5425":"unknown","5432":"unknown","5458":"unknown","5507":"unknown","5517":"unknown","5524":"unknown","5547":"unknown","5550":"unknown","5572":"unknown","5576":"unknown","5595":"unknown","5600":"unknown","5606":"unknown","5613":"unknown","5617":"unknown","5620":"unknown","5621":"unknown","5653":"unknown","5677":"unknown","5690":"unknown","5719":"unknown","5726":"unknown","5733":"unknown","5735":"unknown","5745":"unknown","5752":"unknown","5753":"unknown","5754":"unknown","5763":"unknown","5764":"unknown","5771":"unknown","5772":"unknown","5786":"unknown","5788":"unknown","5801":"unknown","5807":"unknown","5810":"unknown","5822":"unknown","5839":"unknown","5846":"unknown","5858":"unknown","5864":"unknown","5870":"unknown","5872":"unknown","5874":"unknown","5875":"unknown","5876":"unknown","5879":"unknown","5892":"unknown","5907":"unknown","5909":"unknown","5910":"unknown","5919":"unknown","5923":"unknown","5925":"unknown","5932":"unknown","5934":"unknown","5941":"unknown","5951":"unknown","5957":"unknown","5964":"unknown","5970":"unknown","5972":"unknown","5981":"unknown","5987":"unknown","5990":"unknown","6002":"unknown","6009":"unknown","6015":"unknown","6023":"unknown","6041":"unknown","6044":"unknown","6060":"unknown","6063":"unknown","6064":"unknown","6066":"unknown","6074":"unknown","6080":"unknown","6088":"unknown","6090":"unknown","6096":"unknown","6103":"unknown","6110":"unknown","6121":"unknown","6133":"unknown","6150":"unknown","6170":"unknown","6173":"unknown","6180":"unknown","6187":"unknown","6189":"unknown","6195":"unknown","6201":"unknown","6210":"unknown","6215":"unknown","6219":"unknown","6224":"unknown","6237":"unknown","6255":"unknown","6259":"unknown","6260":"unknown","6262":"unknown","6291":"unknown","6312":"unknown","6316":"unknown","6360":"unknown","6398":"unknown","6403":"unknown","6407":"unknown","6437":"unknown","6457":"unknown","6486":"unknown","6491":"unknown","6496":"unknown","6515":"unknown","6519":"unknown","6522":"unknown","6528":"unknown","6534":"unknown","6561":"unknown","6562":"unknown","6565":"unknown","6581":"unknown","6605":"unknown","6608":"unknown","6627":"unknown","6656":"unknown","6673":"unknown","6684":"unknown","6690":"unknown","6700":"unknown","6704":"unknown","6711":"unknown","6722":"unknown","6726":"unknown","6745":"unknown","6752":"unknown","6755":"unknown","6756":"unknown","6760":"unknown","6780":"unknown","6794":"unknown","6796":"unknown","6849":"unknown","6855":"unknown","6863":"unknown","6872":"unknown","6893":"unknown","6898":"unknown","6909":"unknown","6938":"unknown","6951":"unknown","6962":"unknown","6991":"unknown","7010":"unknown","7039":"unknown","7062":"unknown"};
@@ -287,6 +323,7 @@ function loadState() {
       if (saved.progress) state.progress = saved.progress;
       if (saved.filter) state.filter = saved.filter;
       if (saved.source) state.source = saved.source;
+      if (typeof saved.blank === "boolean") state.blank = saved.blank;
     }
   } catch (e) {}
 }
@@ -296,6 +333,7 @@ function saveState() {
     progress: state.progress,
     filter: state.filter,
     source: state.source,
+    blank: state.blank,
   }));
 }
 
@@ -328,6 +366,7 @@ function exportBackup() {
       progress: state.progress,
       filter: state.filter,
       source: state.source,
+      blank: state.blank,
     },
   };
   downloadFile(
@@ -405,6 +444,7 @@ async function restoreBackup(file) {
     ? parsed.state.filter : "unseen";
   state.source = ["all", "Anki", "Quizlet"].includes(parsed.state.source)
     ? parsed.state.source : "all";
+  if (typeof parsed.state.blank === "boolean") state.blank = parsed.state.blank;
   saveState();
   updateFilterButtons();
   buildQueue();
@@ -425,6 +465,119 @@ function shuffle(arr) {
   return arr;
 }
 
+// ---------------------------------------------------------------
+// 전치사 빈칸 모드
+// CARDS / DEFAULT_PROGRESS 는 그대로 두고, 화면에 그릴 때만 전치사를 ( )로 가린다.
+// ---------------------------------------------------------------
+const PREPOSITIONS = [
+  "to", "in", "on", "at", "for", "from", "with", "of", "by", "into", "about",
+  "over", "under", "through", "against", "between", "among", "around", "after",
+  "before", "upon", "onto", "within", "without", "beyond", "toward", "towards",
+  "off", "out", "up", "down", "as"
+];
+const PREPOSITION_SET = new Set(PREPOSITIONS);
+
+// to 다음에 오는 동사원형(부정사의 to)을 걸러내기 위한 목록
+const INFINITIVE_VERBS = new Set([
+  "do", "be", "v", "have", "make", "take", "get", "go", "come", "see", "sign",
+  "view", "begin", "compromise", "meet", "attend", "know", "find", "use", "keep",
+  "give", "call", "help", "try", "start", "stop", "learn", "read", "write", "send",
+  "ask", "tell", "say", "think", "pay", "buy", "sell", "build", "create", "check",
+  "review", "apply", "join", "leave", "move", "play", "run", "set", "show", "speak",
+  "stay", "study", "teach", "visit", "wait", "watch", "win", "open", "close", "add",
+  "allow", "avoid", "become", "bring", "change", "choose", "contact", "decide",
+  "expect", "explain", "feel", "fill", "finish", "follow", "grow", "hold", "improve",
+  "include", "increase", "inform", "introduce", "invite", "lead", "live", "look", "lose",
+  "maintain", "manage", "need", "offer", "order", "organize", "plan", "prepare",
+  "present", "provide", "reach", "receive", "reduce", "remind", "rent", "repair",
+  "replace", "report", "request", "require", "reserve", "respond", "return", "save",
+  "schedule", "select", "serve", "share", "solve", "spend", "submit", "suggest",
+  "support", "talk", "thank", "turn", "understand", "update", "wear", "welcome", "wonder"
+]);
+
+const blankInfoCache = new Map();
+let blankIndexCache = null;
+
+function stripCardHtml(value) {
+  return String(value ?? "")
+    .replace(/<br\s*\/?>/gi, " ")
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&amp;/gi, "&")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function escapeCardHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+// 카드 앞면에서 전치사를 가릴 수 있는 카드면 {prep, front, original}, 아니면 null
+function computeBlankInfo(card) {
+  const raw = String(card && card.t || "");
+  if (/[_()]/.test(raw)) return null;            // 이미 _ 나 ( ) 빈칸이 있는 카드
+  if (/<br\s*\/?>/i.test(raw)) return null;      // 여러 구문을 묶어 둔 카드
+  const plain = stripCardHtml(raw);
+  if (!plain) return null;
+  if (/[\uAC00-\uD7A3\u3131-\u318E]/.test(plain)) return null;   // 한글 카드
+  if (!/^[A-Za-z][A-Za-z'\- ]*$/.test(plain)) return null;        // 영문 구문만
+  const tokens = plain.split(/\s+/);
+  if (tokens.length < 2 || tokens.length > 6) return null;        // 2~6단어 구문
+
+  const candidates = [];
+  tokens.forEach((token, index) => {
+    if (PREPOSITION_SET.has(token.toLowerCase())) candidates.push(index);
+  });
+  // to 부정사(to + 동사원형)의 to 는 전치사가 아니므로 제외
+  const usable = candidates.filter(index => {
+    if (tokens[index].toLowerCase() !== "to") return true;
+    const next = tokens[index + 1];
+    return !(next && INFINITIVE_VERBS.has(next.toLowerCase()));
+  });
+  if (usable.length === 0) return null;
+
+  // 전치사가 여러 개면 마지막 전치사구의 전치사를 가린다 (in charge ( ) sales)
+  const blankAt = usable[usable.length - 1];
+  const front = tokens
+    .map((token, index) => index === blankAt
+      ? '<span class="prep-blank">( )</span>'
+      : escapeCardHtml(token))
+    .join(" ");
+  const original = tokens
+    .map((token, index) => index === blankAt
+      ? "<b>" + escapeCardHtml(token) + "</b>"
+      : escapeCardHtml(token))
+    .join(" ");
+  return { prep: tokens[blankAt].toLowerCase(), front, original };
+}
+
+function getBlankInfo(index) {
+  if (blankInfoCache.has(index)) return blankInfoCache.get(index);
+  const info = computeBlankInfo(CARDS[index]);
+  blankInfoCache.set(index, info);
+  return info;
+}
+
+function blankIndices() {
+  if (blankIndexCache === null) {
+    blankIndexCache = [];
+    for (let i = 0; i < CARDS.length; i++) {
+      if (computeBlankInfo(CARDS[i])) blankIndexCache.push(i);
+    }
+  }
+  return blankIndexCache;
+}
+
+function blankCountForSource() {
+  if (state.source === "all") return blankIndices().length;
+  return blankIndices().filter(i => CARDS[i].s === state.source).length;
+}
+
 function buildQueue() {
   let indices = CARDS.map((_, i) => i);
   if (state.source !== "all") {
@@ -436,6 +589,10 @@ function buildQueue() {
     indices = indices.filter(i => getCardStatus(i) === "known");
   } else if (state.filter === "unknown") {
     indices = indices.filter(i => getCardStatus(i) === "unknown");
+  }
+  if (state.blank) {
+    const eligible = new Set(blankIndices());
+    indices = indices.filter(i => eligible.has(i));
   }
   state.queue = shuffle(indices);
   state.pos = 0;
@@ -462,25 +619,43 @@ function updateStats() {
 }
 
 function showCard() {
+  const blankDefEl = document.getElementById("blank-def");
   if (state.queue.length === 0) {
     document.getElementById("term").textContent = "📭";
     document.getElementById("def").classList.add("hidden");
+    blankDefEl.classList.add("hidden");
     document.getElementById("tip").textContent = "";
-    document.getElementById("meta").innerHTML = "<span>현재 필터에 맞는 카드가 없습니다</span>";
+    document.getElementById("meta").innerHTML = "<span>" +
+      (state.blank ? "현재 필터에 맞는 전치사 빈칸 카드가 없습니다" : "현재 필터에 맞는 카드가 없습니다") +
+      "</span>";
     return;
   }
   if (state.pos >= state.queue.length) {
     state.pos = 0;
     document.getElementById("term").textContent = "🎉 한 바퀴 완료!";
     document.getElementById("def").classList.add("hidden");
+    blankDefEl.classList.add("hidden");
     document.getElementById("tip").textContent = "다시 보려면 [섞기] 또는 다른 필터를 선택하세요";
     document.getElementById("meta").innerHTML = "";
     return;
   }
   const idx = state.queue[state.pos];
   const card = CARDS[idx];
-  document.getElementById("term").innerHTML = card.t;
-  document.getElementById("def").innerHTML = card.d;
+  const blank = state.blank ? getBlankInfo(idx) : null;
+
+  if (blank) {
+    document.getElementById("term").innerHTML = '<span class="blank-phrase">' + blank.front + "</span>";
+    blankDefEl.innerHTML = card.d;
+    blankDefEl.classList.remove("hidden");
+    document.getElementById("def").innerHTML =
+      '<span class="prep-answer">전치사 ' + escapeCardHtml(blank.prep) + "</span>" +
+      '<span class="prep-original">' + blank.original + "</span>";
+  } else {
+    document.getElementById("term").innerHTML = card.t;
+    blankDefEl.classList.add("hidden");
+    blankDefEl.innerHTML = "";
+    document.getElementById("def").innerHTML = card.d;
+  }
   document.getElementById("def").classList.add("hidden");
   state.flipped = false;
 
@@ -555,6 +730,12 @@ function updateFilterButtons() {
   document.querySelectorAll("[data-source]").forEach(btn => {
     btn.classList.toggle("active", btn.dataset.source === state.source);
   });
+  const blankBtn = document.getElementById("btn-blank");
+  blankBtn.classList.toggle("active", state.blank);
+  blankBtn.setAttribute("aria-pressed", state.blank ? "true" : "false");
+  blankBtn.textContent = state.blank
+    ? "🧩 전치사 빈칸 · " + blankCountForSource().toLocaleString()
+    : "🧩 전치사 빈칸";
 }
 
 document.querySelectorAll("[data-filter]").forEach(btn => {
@@ -575,6 +756,14 @@ document.querySelectorAll("[data-source]").forEach(btn => {
     showCard();
     updateStats();
   });
+});
+
+document.getElementById("btn-blank").addEventListener("click", () => {
+  state.blank = !state.blank;
+  saveState();
+  updateFilterButtons();
+  buildQueue();
+  showCard();
 });
 
 document.getElementById("card").addEventListener("click", flip);
